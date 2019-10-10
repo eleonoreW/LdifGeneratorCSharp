@@ -20,7 +20,11 @@ namespace LdifGenerator
         [Required]
         [Option("-s|--size <SizeLimit>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
         public int Size { get; } = 10;
-        
+
+
+        [Option("-m|--maxLineNumber <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
+        public int MaxLineNumber { get; } = 10;
+
         static int Main(string[] args)
         {
 #if DEBUG
@@ -28,7 +32,8 @@ namespace LdifGenerator
             {
                 "-b=dc=example,dc=com",
                 "-o=C:/Temp/generated",
-                "-s=100",
+                "-s=1000",
+                "-m=1000"
             };
 #endif
             return CommandLineApplication.Execute<Program>(args);
@@ -74,7 +79,6 @@ namespace LdifGenerator
                 {
                     foreach(string dn in DNs)
                     {
-                        writer.WriteLine();
                         string title = ranks[random.Next(0, ranks.Length)] + " " + positions[random.Next(0, positions.Length)];
                         writer.WriteLine(ModifyPerson(dn,title) + "\r");
                     }
@@ -84,7 +88,6 @@ namespace LdifGenerator
                 {
                     foreach (string dn in DNs)
                     {
-                        writer.WriteLine();
                         writer.WriteLine(DeletePerson(dn) + "\r");
                     }
                     foreach (string entry in DeleteOU(BaseDN, OUNames))
@@ -118,15 +121,23 @@ namespace LdifGenerator
         }
         private string GeneratePerson(string dn, string name, string[] classes, string ou, string host)
         {
+            var rand = new Random();
             var builder = new StringBuilder();
             builder.AppendLine("dn: " + dn);
-            builder.AppendLine("changetype: add");
             builder.AppendLine("cn: " + name);
             builder.AppendLine("sn: " + name);
-            /* builder.AppendLine("ou: " + ou);
-             builder.AppendLine("mail: " + name.Replace(' ', '.') + "@" + ou.Replace(" ",String.Empty) + "." + host);*/
-            var rand = new Random();
-            builder.AppendLine("objectclass: "+ classes[rand.Next(0, classes.Length)]);
+            var pClass = classes[rand.Next(1, classes.Length)];
+
+            builder.AppendLine("objectclass: "+ pClass);
+            if (pClass.Equals("organizationalPerson"))
+            {
+                builder.AppendLine("ou: " + ou);
+            }
+            if (pClass.Equals("inetOrgPerson"))
+            {
+                builder.AppendLine("ou: " + ou);
+                builder.AppendLine(("mail: " + name.Replace(' ', '.') + "@" + ou.Replace(" ", String.Empty) + "." + host).ToLowerInvariant());
+            }
             return builder.ToString();
         }
 
@@ -146,9 +157,9 @@ namespace LdifGenerator
             foreach(string name in ouNames)
             {
                 var builder = new StringBuilder();
-                builder.AppendLine("dn: ou="+ name+","+baseDN);
+                builder.AppendLine("dn: ou=" + name + "," + baseDN);
                 builder.AppendLine("objectclass: organizationalUnit");
-                builder.AppendLine("ou: "+name);
+                builder.AppendLine("ou: " + name);
                 myList.Add(builder.ToString());
             }
             return myList;
