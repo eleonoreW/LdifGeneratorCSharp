@@ -24,6 +24,11 @@ namespace LdifGenerator
         [Option("-m|--maxLineNumber <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
         public int MaxFileSize { get; set; } = -1;
 
+        [Option("-l|--EOL ", "Specifies if we must use Windows EOL.", CommandOptionType.SingleValue)]
+        public bool EOL { get; set; } = false;
+
+        public string eol { get; set; } = "\r";
+
         static int Main(string[] args)
         {
 #if DEBUG
@@ -143,6 +148,7 @@ namespace LdifGenerator
             var rand = new Random();
             var builder = new StringBuilder();
             builder.AppendLine("dn: " + dn);
+            builder.AppendLine("changetype: add");
             builder.AppendLine("cn: " + name);
             builder.AppendLine("sn: " + name);
             var pClass = classes[rand.Next(1, classes.Length)];
