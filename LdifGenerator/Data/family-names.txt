@@ -2646,12 +2646,6 @@ D'Silva
 D'Soto
 D'Souza
 D'lima
-DALE
-DDOCDB
-DMS
-DMSDB
-DPNBUILD
-DPP
 Da
 Da Gama
 Da Silva
@@ -2782,11 +2776,6 @@ Daya
 Dayal
 Dayberry
 Daymond
-Db
-Dba
-Dbase
-Dbs
-De
 De Anda
 De Baets
 De Beaumont
@@ -3138,7 +3127,6 @@ Doble
 Dobransky
 Docherty
 Dockendorff
-Documentation-Grp
 Doczy
 Doda
 Dodd
@@ -13400,7 +13388,6 @@ Zwierzchowski
 Zybala
 Zylstra
 Zywiel
-cprs
 de Belen
 de Buda
 de CHABERT
@@ -13410,10 +13397,9 @@ de Hoog
 de Salis
 de Wilton
 de Witte
-deMontluzin
-deRosenroll
-deVette
-fpsched
-livinston
+de Montluzin
+DeRosenroll
+DeVette
+Livinston
 van Leeuwen
 von Ende
