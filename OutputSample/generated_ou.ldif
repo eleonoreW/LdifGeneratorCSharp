@@ -1,0 +1,40 @@
+dn: ou=Accounting,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Accounting
+
+dn: ou=Product Development,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Product Development
+
+dn: ou=Product Testing,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Product Testing
+
+dn: ou=Human Resources,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Human Resources
+
+dn: ou=Payroll,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Payroll
+
+dn: ou=Janitorial,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Janitorial
+
+dn: ou=Management,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Management
+
+dn: ou=Administrative,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Administrative
+
+dn: ou=Peons,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Peons
+
+dn: ou=Planning,dc=example,dc=com
+objectclass: organizationalUnit
+ou: Planning
+
