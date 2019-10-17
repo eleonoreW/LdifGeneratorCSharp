@@ -12,27 +12,27 @@ namespace LdifGenerator
     class Program
     {
         [Required]
-        [Option("-o|--outputFile <File>", "Specifies the output ldif file", CommandOptionType.SingleValue)]
+        [Option("-o|--outputFile <File>", "Specifies the output ldif file.", CommandOptionType.SingleValue)]
         public string OutputFile { get; }
 
         [Required]
-        [Option("-b|--baseDN <File>", "Specifies the entry csv file", CommandOptionType.SingleValue)]
+        [Option("-b|--baseDN <File>", "Specifies the base DN in which the entries should be created.", CommandOptionType.SingleValue)]
         public string BaseDN { get; }
 
         [Required]
-        [Option("-s|--size <SizeLimit>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
+        [Option("-s|--size <SizeLimit>", "Specifies how many entries should be generated.", CommandOptionType.SingleValue)]
         public int Size { get; } = 10;
 
-        [Option("--seed <SizeLimit>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
+        [Option("--seed <Seed>", "Specifies the Seed for the random number generator.", CommandOptionType.SingleValue)]
         public int Seed { get; } = -1;
 
-        [Option("-m|--maxLineNumber <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
+        [Option("-m|--maxLineNumber <LinesNumber>", "Specifies how much entries must be  written in asingle file. If need be, multiple files will be created.", CommandOptionType.SingleValue)]
         public int MaxFileSize { get; set; } = -1;
 
-        [Option("-p|--personIds <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.NoValue)]
+        [Option("-p|--personIds <PersonId>", "If used, the entries CN and DN must contain a number. Example: cn=200 Hollandsworth Carlos,dc=example,dc=com", CommandOptionType.NoValue)]
         public bool PersonNumbers { get; set; } = false;
 
-        [Option("-l|--EOL ", "Specifies if we must use Windows EOL.", CommandOptionType.SingleValue)]
+        [Option("-l|--EOL ", "If used, the Windows EOL will be used.", CommandOptionType.NoValue)]
         public EnvironnementType Environnement { get; set; } = EnvironnementType.UNIX;
 
         string EOL;
@@ -43,10 +43,10 @@ namespace LdifGenerator
             {
                 "-b=dc=example,dc=com",
                 "-o=C:/Temp/generated",
-                "-s=2000",
+                "-s=400",
                 "-p",
-                //"--seed=2",
-                //"-m=300"
+                "--seed=2",
+                "-m=200"
             };
 #endif
             return CommandLineApplication.Execute<Program>(args);
@@ -54,8 +54,6 @@ namespace LdifGenerator
 
         private void OnExecute(CommandLineApplication app)
         {
-
-
             try
             {
                 switch (Environnement)
@@ -111,7 +109,7 @@ namespace LdifGenerator
                     {
                         NewLine = EOL
                     };
-                    int max = (j == nbFile - 1 && MaxFileSize != Size) ? Size % MaxFileSize : MaxFileSize;
+                    int max = (j == nbFile - 1 && MaxFileSize != Size && (Size % MaxFileSize) != 0) ? Size % MaxFileSize : MaxFileSize;
                     for (int i = 1; i <= max; i += 1)
                     {
                         var person = enumerator.Current;
