@@ -7,8 +7,6 @@ using System.Text;
 
 namespace LdifGenerator
 {
-    enum EnvironnementType { UNIX, WINDOWS }
-
     class Program
     {
         [Required]
@@ -32,8 +30,8 @@ namespace LdifGenerator
         [Option("-p|--personIds <PersonId>", "If used, the entries CN and DN must contain a number. Example: cn=200 Hollandsworth Carlos,dc=example,dc=com", CommandOptionType.NoValue)]
         public bool PersonNumbers { get; set; } = false;
 
-        [Option("-l|--EOL ", "If used, the Windows EOL will be used.", CommandOptionType.NoValue)]
-        public EnvironnementType Environnement { get; set; } = EnvironnementType.UNIX;
+        [Option("-w|--UseWindowsEOL ", "If used, the Windows EOL will be used.", CommandOptionType.NoValue)]
+        public bool UseWindowsEOL { get; set; } = false;
 
         string EOL;
         static int Main(string[] args)
@@ -56,15 +54,8 @@ namespace LdifGenerator
         {
             try
             {
-                switch (Environnement)
-                {
-                    case EnvironnementType.UNIX:
-                        EOL = "\n";
-                        break;
-                    case EnvironnementType.WINDOWS:
-                        EOL = "\r\n";
-                        break;
-                }
+                EOL = UseWindowsEOL ? "\r\n" : "\n";
+
                 string path = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName + @"\Data\";
 
                 string[] OUNames = File.ReadAllLines(path + "organizational-units.txt");
