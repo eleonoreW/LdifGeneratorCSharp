@@ -1,4 +1,3 @@
-top
 person
 organizationalPerson
 inetOrgPerson

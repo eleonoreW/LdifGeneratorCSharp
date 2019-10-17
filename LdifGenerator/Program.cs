@@ -29,6 +29,9 @@ namespace LdifGenerator
         [Option("-m|--maxLineNumber <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.SingleValue)]
         public int MaxFileSize { get; set; } = -1;
 
+        [Option("-p|--personIds <linesNumber>", "Specifies the Search size timeout.", CommandOptionType.NoValue)]
+        public bool PersonNumbers { get; set; } = false;
+
         [Option("-l|--EOL ", "Specifies if we must use Windows EOL.", CommandOptionType.SingleValue)]
         public EnvironnementType Environnement { get; set; } = EnvironnementType.UNIX;
 
@@ -41,6 +44,7 @@ namespace LdifGenerator
                 "-b=dc=example,dc=com",
                 "-o=C:/Temp/generated",
                 "-s=2000",
+                "-p",
                 //"--seed=2",
                 //"-m=300"
             };
@@ -73,7 +77,7 @@ namespace LdifGenerator
                 string[] positions = File.ReadAllLines(path + "positions.txt");
                 string[] ranks = File.ReadAllLines(path + "title-ranks.txt");
 
-                List<string> DNs = new List<string>();
+                Dictionary<string, (string DN, string ou, string objectclass)> personDictionary = new Dictionary<string, (string DN, string ou, string objectclass)>();
                 Random random = Seed != -1 ? new Random(Seed) : new Random();
 
                 double nbFile = 1;
@@ -86,23 +90,34 @@ namespace LdifGenerator
                     MaxFileSize = Size;
                 }
 
-                for (int j = 0; j < nbFile; j = j + 1)
+                while (personDictionary.Count < Size)
                 {
-                    using (var writer = new StreamWriter(new FileStream(OutputFile + "_" + j + ".ldif", FileMode.Create)))
+                    string ou = GetRandFromArray(OUNames, random);
+                    string name = GetRandFromArray(fNames, random) + " " + GetRandFromArray(gNames, random);
+                    if (PersonNumbers)
                     {
-                        writer.NewLine = EOL;
-                        int max = (j == nbFile - 1 && MaxFileSize != Size) ? Size % MaxFileSize : MaxFileSize;
-                        for (int i = 1; i <= max; i += 1)
-                        {
-                            var id = i + MaxFileSize * j;
-                            string ou = OUNames[random.Next(0, OUNames.Length)];
-                            string name = id + " " + fNames[random.Next(0, fNames.Length)] + " " + gNames[random.Next(0, gNames.Length)];
-                            string dn = "cn=" + name + ",ou=" + ou + "," + BaseDN;
-                            DNs.Add(dn);
+                        name = personDictionary.Count + " " + name;
+                    }
+                    string dn = "cn=" + name + ",ou=" + ou + "," + BaseDN;
+                    string objectClass = GetRandFromArray(personClasses, random);
+                    personDictionary.TryAdd(name, (dn, ou, objectClass));
+                }
 
-                            string host = mailhosts[random.Next(0, mailhosts.Length)];
-                            writer.WriteLine(GeneratePerson(dn, name, personClasses, ou, host));
-                        }
+                var enumerator = personDictionary.GetEnumerator();
+                enumerator.MoveNext();
+                for (int j = 0; j < nbFile; j += 1)
+                {
+                    using var writer = new StreamWriter(new FileStream(OutputFile + "_" + j + ".ldif", FileMode.Create))
+                    {
+                        NewLine = EOL
+                    };
+                    int max = (j == nbFile - 1 && MaxFileSize != Size) ? Size % MaxFileSize : MaxFileSize;
+                    for (int i = 1; i <= max; i += 1)
+                    {
+                        var person = enumerator.Current;
+                        string host = GetRandFromArray(mailhosts, random);
+                        writer.WriteLine(GeneratePerson(person.Value.DN, person.Key, person.Value.objectclass, person.Value.ou, host));
+                        enumerator.MoveNext();
                     }
                 }
 
@@ -118,19 +133,24 @@ namespace LdifGenerator
                 using (var writer = new StreamWriter(new FileStream(OutputFile + "_mod.ldif", FileMode.Create)))
                 {
                     writer.NewLine = EOL;
-                    foreach (string dn in DNs)
+                    foreach (var person in personDictionary)
                     {
-                        string title = ranks[random.Next(0, ranks.Length)] + " " + positions[random.Next(0, positions.Length)];
-                        writer.WriteLine(ModifyPerson(dn, title));
+                        if (!string.Equals(person.Value.objectclass, "inetOrgPerson"))
+                        {
+                            continue;
+                        }
+
+                        string title = GetRandFromArray(ranks, random) + " " + GetRandFromArray(positions, random);
+                        writer.WriteLine(ModifyPerson(person.Value.DN, title));
                     }
                 }
 
                 using (var writer = new StreamWriter(new FileStream(OutputFile + "_del.ldif", FileMode.Create)))
                 {
                     writer.NewLine = EOL;
-                    foreach (string dn in DNs)
+                    foreach (var person in personDictionary)
                     {
-                        writer.WriteLine(DeletePerson(dn));
+                        writer.WriteLine(DeletePerson(person.Value.DN));
                     }
                     foreach (string entry in DeleteOU(BaseDN, OUNames))
                     {
@@ -151,33 +171,36 @@ namespace LdifGenerator
             }
         }
 
+        private string GetRandFromArray(string[] myArray, Random rand)
+        {
+            return myArray[rand.Next(0, myArray.Length)];
+        }
+
         private string ModifyPerson(string dn, string title)
         {
             var builder = new StringBuilder();
             builder.Append("dn: " + dn + EOL);
             builder.Append("changetype: modify" + EOL);
-            builder.Append("add: description" + EOL);
-            builder.Append("description: " + title + EOL);
+            builder.Append("add: title" + EOL);
+            builder.Append("title: " + title + EOL);
 
             return builder.ToString();
         }
 
-        private string GeneratePerson(string dn, string name, string[] classes, string ou, string host)
+        private string GeneratePerson(string dn, string name, string pClass, string ou, string host)
         {
-            var rand = new Random();
             var builder = new StringBuilder();
             builder.Append("dn: " + dn + EOL);
             builder.Append("changetype: add" + EOL);
             builder.Append("cn: " + name + EOL);
             builder.Append("sn: " + name + EOL);
-            var pClass = classes[rand.Next(1, classes.Length)];
-            if (pClass.Equals("organizationalPerson"))
+            if (!pClass.Equals("person"))
             {
                 builder.Append("ou: " + ou + EOL);
             }
+
             if (pClass.Equals("inetOrgPerson"))
             {
-                builder.Append("ou: " + ou + EOL);
                 builder.Append(("mail: " + name.Replace(' ', '.') + "@" + ou.Replace(" ", String.Empty) + "." + host).ToLowerInvariant() + EOL);
             }
             builder.Append("objectclass: " + pClass + EOL);
@@ -190,8 +213,6 @@ namespace LdifGenerator
             builder.Append(dn + EOL);
             return builder.ToString();
         }
-
-
 
         private List<string> GenerateOU(string baseDN, string[] ouNames)
         {
