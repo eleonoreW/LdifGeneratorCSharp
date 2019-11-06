@@ -189,12 +189,12 @@ namespace LdifGenerator
             }
         }
 
-        private string ModifyPersonAttribute(string dn, string attribute, string changeType, string value)
+        private string ModifyPersonAttribute(string dn, string attribute, string action, string value)
         {
             var builder = new StringBuilder();
             builder.Append("dn: " + dn + EOL);
-            builder.Append("changetype: " + changeType + EOL);
-            builder.Append(changeType + ": " + attribute + EOL);
+            builder.Append("changetype: modify" + EOL);
+            builder.Append(action + ": " + attribute + EOL);
             builder.Append(attribute + ": " + value + EOL);
 
             return builder.ToString();
