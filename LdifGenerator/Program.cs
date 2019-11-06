@@ -54,7 +54,7 @@ namespace LdifGenerator
             {
                 "-b=dc=example,dc=com",
                 "-o=C:/Temp/generated_5000",
-                "-s=200",
+                "-s=5000",
                 //"-p",
                 "--seed=2",
                 //"-m=200"
@@ -158,7 +158,7 @@ namespace LdifGenerator
                     writer.NewLine = EOL;
                     foreach (var person in personDictionary)
                     {
-                        string description = GetRandFromArray(ranks, random) + " " + GetRandFromArray(positions, random);
+                        string description = "I'm " + person.Key + ". I want to be a " + GetRandFromArray(ranks, random) + " " + GetRandFromArray(positions, random) + " in " + GetRandFromArray(localities, random) + ".";
                         writer.WriteLine(ModifyPersonAttribute(person.Value.DN, "description", "replace", description));
                     }
                 }
