@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace LdifGenerator
@@ -34,17 +35,29 @@ namespace LdifGenerator
         public bool UseWindowsEOL { get; set; } = false;
 
         string EOL;
+
+        string[] OUNames;
+        string[] fNames;
+        string[] gNames;
+        string[] personClasses;
+        string[] mailhosts;
+        string[] positions;
+        string[] ranks;
+        string[] localities;
+        Dictionary<string, (string DN, string ou, string objectclass)> personDictionary;
+
+
         static int Main(string[] args)
         {
 #if DEBUG
             args = new string[]
             {
                 "-b=dc=example,dc=com",
-                "-o=C:/Temp/generated",
-                "-s=400",
-                "-p",
+                "-o=C:/Temp/generated_5000",
+                "-s=200",
+                //"-p",
                 "--seed=2",
-                "-m=200"
+                //"-m=200"
             };
 #endif
             return CommandLineApplication.Execute<Program>(args);
@@ -58,15 +71,16 @@ namespace LdifGenerator
 
                 string path = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName + @"\Data\";
 
-                string[] OUNames = File.ReadAllLines(path + "organizational-units.txt");
-                string[] fNames = File.ReadAllLines(path + "family-names.txt");
-                string[] gNames = File.ReadAllLines(path + "given-names.txt");
-                string[] personClasses = File.ReadAllLines(path + "person-classes.txt");
-                string[] mailhosts = File.ReadAllLines(path + "mail-hosts.txt");
-                string[] positions = File.ReadAllLines(path + "positions.txt");
-                string[] ranks = File.ReadAllLines(path + "title-ranks.txt");
+                OUNames = File.ReadAllLines(path + "organizational-units.txt");
+                fNames = File.ReadAllLines(path + "family-names.txt");
+                gNames = File.ReadAllLines(path + "given-names.txt");
+                personClasses = File.ReadAllLines(path + "person-classes.txt");
+                mailhosts = File.ReadAllLines(path + "mail-hosts.txt");
+                positions = File.ReadAllLines(path + "positions.txt");
+                ranks = File.ReadAllLines(path + "title-ranks.txt");
+                localities = File.ReadAllLines(path + "localities.txt");
 
-                Dictionary<string, (string DN, string ou, string objectclass)> personDictionary = new Dictionary<string, (string DN, string ou, string objectclass)>();
+                personDictionary = new Dictionary<string, (string DN, string ou, string objectclass)>();
                 Random random = Seed != -1 ? new Random(Seed) : new Random();
 
                 double nbFile = 1;
@@ -78,7 +92,7 @@ namespace LdifGenerator
                 {
                     MaxFileSize = Size;
                 }
-
+                int dup = 0;
                 while (personDictionary.Count < Size)
                 {
                     string ou = GetRandFromArray(OUNames, random);
@@ -89,8 +103,13 @@ namespace LdifGenerator
                     }
                     string dn = "cn=" + name + ",ou=" + ou + "," + BaseDN;
                     string objectClass = GetRandFromArray(personClasses, random);
-                    personDictionary.TryAdd(name, (dn, ou, objectClass));
+                    if (!personDictionary.TryAdd(name, (dn, ou, objectClass)))
+                    {
+                        dup++;
+                    }
                 }
+
+                Console.WriteLine("{0} Duplicate", dup);
 
                 var enumerator = personDictionary.GetEnumerator();
                 enumerator.MoveNext();
@@ -105,7 +124,7 @@ namespace LdifGenerator
                     {
                         var person = enumerator.Current;
                         string host = GetRandFromArray(mailhosts, random);
-                        writer.WriteLine(GeneratePerson(person.Value.DN, person.Key, person.Value.objectclass, person.Value.ou, host));
+                        writer.WriteLine(GeneratePerson(person.Value.DN, person.Key, person.Value.objectclass, person.Value.ou, host, random));
                         enumerator.MoveNext();
                     }
                 }
@@ -119,7 +138,7 @@ namespace LdifGenerator
                     }
                 }
 
-                using (var writer = new StreamWriter(new FileStream(OutputFile + "_mod.ldif", FileMode.Create)))
+                using (var writer = new StreamWriter(new FileStream(OutputFile + "_mod_inetOrgPerson.ldif", FileMode.Create)))
                 {
                     writer.NewLine = EOL;
                     foreach (var person in personDictionary)
@@ -130,7 +149,17 @@ namespace LdifGenerator
                         }
 
                         string title = GetRandFromArray(ranks, random) + " " + GetRandFromArray(positions, random);
-                        writer.WriteLine(ModifyPerson(person.Value.DN, title));
+                        writer.WriteLine(ModifyPersonAttribute(person.Value.DN, "title", "add", title));
+                    }
+                }
+
+                using (var writer = new StreamWriter(new FileStream(OutputFile + "_mod_all.ldif", FileMode.Create)))
+                {
+                    writer.NewLine = EOL;
+                    foreach (var person in personDictionary)
+                    {
+                        string description = GetRandFromArray(ranks, random) + " " + GetRandFromArray(positions, random);
+                        writer.WriteLine(ModifyPersonAttribute(person.Value.DN, "description", "replace", description));
                     }
                 }
 
@@ -160,37 +189,44 @@ namespace LdifGenerator
             }
         }
 
+        private string ModifyPersonAttribute(string dn, string attribute, string changeType, string value)
+        {
+            var builder = new StringBuilder();
+            builder.Append("dn: " + dn + EOL);
+            builder.Append("changetype: " + changeType + EOL);
+            builder.Append(changeType + ": " + attribute + EOL);
+            builder.Append(attribute + ": " + value + EOL);
+
+            return builder.ToString();
+        }
+
         private string GetRandFromArray(string[] myArray, Random rand)
         {
             return myArray[rand.Next(0, myArray.Length)];
         }
 
-        private string ModifyPerson(string dn, string title)
-        {
-            var builder = new StringBuilder();
-            builder.Append("dn: " + dn + EOL);
-            builder.Append("changetype: modify" + EOL);
-            builder.Append("add: title" + EOL);
-            builder.Append("title: " + title + EOL);
-
-            return builder.ToString();
-        }
-
-        private string GeneratePerson(string dn, string name, string pClass, string ou, string host)
+        private string GeneratePerson(string dn, string name, string pClass, string ou, string host, Random random)
         {
             var builder = new StringBuilder();
             builder.Append("dn: " + dn + EOL);
             builder.Append("changetype: add" + EOL);
             builder.Append("cn: " + name + EOL);
             builder.Append("sn: " + name + EOL);
+            builder.Append("description: This is " + name + "'s description." + EOL);
             if (!pClass.Equals("person"))
             {
                 builder.Append("ou: " + ou + EOL);
+                builder.Append("l: " + GetRandFromArray(localities, random) + EOL);
+                builder.Append("telephoneNumber: +33" + random.Next(100000000) + EOL);
             }
-
             if (pClass.Equals("inetOrgPerson"))
             {
                 builder.Append(("mail: " + name.Replace(' ', '.') + "@" + ou.Replace(" ", String.Empty) + "." + host).ToLowerInvariant() + EOL);
+                if (personDictionary.Any())
+                {
+                    builder.Append("secretary: " + personDictionary.ElementAt(random.Next(personDictionary.Count)).Value.DN + EOL);
+                    builder.Append("manager: " + personDictionary.ElementAt(random.Next(personDictionary.Count)).Value.DN + EOL);
+                }
             }
             builder.Append("objectclass: " + pClass + EOL);
             return builder.ToString();
